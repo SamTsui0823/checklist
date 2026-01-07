@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主日影音部當值 Checklist (多崗位版)</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-light: #eff6ff;
+            --bg-color: #f8fafc;
+            --surface-color: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #cbd5e1;
+            --success-color: #22c55e;
+            --tag-bg: #e2e8f0;
+            --tag-text: #475569;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--surface-color);
+            padding: 1rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        p.subtitle {
+            margin: 0.25rem 0 0;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        /* Role Filters (Multi-select) */
+        .filter-container {
+            background: var(--surface-color);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            display: block;
+            text-align: center;
+        }
+
+        .role-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .role-btn {
+            border: 1px solid var(--border-color);
+            background: white;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.9rem;
+            border-radius: 20px;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            user-select: none;
+        }
+
+        .role-btn:hover {
+            background-color: var(--primary-light);
+            border-color: var(--primary-color);
+        }
+
+        .role-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .role-btn .check-icon {
+            display: none;
+            font-size: 0.8em;
+        }
+
+        .role-btn.active .check-icon {
+            display: inline;
+        }
+
+        /* Content Area */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1rem;
+            padding-bottom: 6rem; /* Space for reset button */
+        }
+
+        /* Time Blocks */
+        .time-block {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .time-header {
+            background-color: #f1f5f9;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .time-badge {
+            background-color: #94a3b8;
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+        }
+
+        /* Checklist Items */
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .checklist-item:last-child {
+            border-bottom: none;
+        }
+
+        .checklist-item:hover {
+            background-color: var(--primary-light);
+        }
+
+        /* Custom Checkbox */
+        .checkbox-wrapper {
+            margin-right: 1rem;
+            margin-top: 0.15rem;
+            position: relative;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .custom-checkbox {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            background-color: white;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checklist-item input:checked + .custom-checkbox {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .custom-checkbox::after {
+            content: '';
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            opacity: 0;
+            margin-bottom: 2px;
+            transition: opacity 0.2s;
+        }
+
+        .checklist-item input:checked + .custom-checkbox::after {
+            opacity: 1;
+        }
+
+        .task-content {
+            flex-grow: 1;
+            font-size: 1rem;
+            color: var(--text-color);
+            transition: color 0.2s;
+        }
+
+        .checklist-item input:checked ~ .task-content {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        /* Role Tags (Badges) */
+        .role-tags {
+            display: inline-flex;
+            gap: 4px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        
+        .role-tag {
+            font-size: 0.7rem;
+            background-color: var(--tag-bg);
+            color: var(--tag-text);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            padding: 0 1rem 1rem;
+            background: var(--surface-color);
+        }
+
+        .progress-bar-bg {
+            height: 6px;
+            background-color: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+
+        /* Reset Button */
+        .reset-container {
+            text-align: center;
+            padding: 1rem;
+            background: #f1f5f9;
+            border-top: 1px solid var(--border-color);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 90;
+        }
+
+        .reset-btn {
+            background-color: white;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .reset-btn:active {
+            background-color: #fef2f2;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #94a3b8;
+        }
+        
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>主日影音服侍 Checklist</h1>
+    <p class="subtitle">請選擇您今日負責的崗位（可多選）</p>
+</header>
+
+<div class="filter-container">
+    <div class="role-filters" id="roleFilters">
+        <button class="role-btn" onclick="toggleRole('ppt')" data-role="ppt">
+            <span class="check-icon">✓</span> PPT
+        </button>
+        <button class="role-btn" onclick="toggleRole('mixer')" data-role="mixer">
+            <span class="check-icon">✓</span> Mixer
+        </button>
+        <button class="role-btn" onclick="toggleRole('video')" data-role="video">
+            <span class="check-icon">✓</span> Video
+        </button>
+        <button class="role-btn" onclick="toggleRole('camera')" data-role="camera">
+            <span class="check-icon">✓</span> Cam
+        </button>
+        <button class="role-btn" onclick="toggleRole('lighting')" data-role="lighting">
+            <span class="check-icon">✓</span> Light
+        </button>
+        <button class="role-btn" onclick="toggleRole('leader')" data-role="leader">
+            <span class="check-icon">✓</span> Leader
+        </button>
+    </div>
+</div>
+
+<div class="progress-container">
+    <div class="progress-text" id="progressText">完成度: 0%</div>
+    <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+</div>
+
+<div class="container" id="checklistContainer">
+    <!-- Content will be injected by JavaScript -->
+</div>
+
+<div class="reset-container">
+    <button class="reset-btn" onclick="resetChecklist()">⚠️ 重置所有勾選</button>
+</div>
+
+<script>
+    // Data Structure extracted from PDF
+    const rolesData = {
+        ppt: [
+            { time: "07:45", tasks: ["影音集合", "插電腦"] },
+            { time: "07:55", tasks: ["預備好 YouTube (晨禱)", "播放純音樂"] },
+            { time: "08:00", tasks: ["晨禱開始：協助 YouTube, 經文"] },
+            { time: "08:45", tasks: ["晨禱完結：對 PPT, 經文"] },
+            { time: "09:00", tasks: ["敬拜練習：對歌詞", "敬拜練習：對流程", "敬拜練習：對證道 PPT"] },
+            { time: "10:00", tasks: ["問講員 PPT (如未有)"] },
+            { time: "10:13", tasks: ["預備直播：播放純音樂 / 郇山敬拜 Playlist"] },
+            { time: "10:15", tasks: ["服侍祈禱"] },
+            { time: "10:25", tasks: ["影音 Standby"] },
+            { time: "10:30", tasks: ["主崇開始"] },
+            { time: "11:00", tasks: ["證道：轉 Stage Mon 去講員 PPT"] },
+            { time: "12:00", tasks: ["主崇結束：收電腦"] }
+        ],
+        mixer: [
+            { time: "07:45", tasks: ["影音集合", "插電腦", "插咪, 樂器"] },
+            { time: "07:55", tasks: ["預備無線咪", "出純音樂"] },
+            { time: "08:00", tasks: ["晨禱開始：調節咪, 電腦音量"] },
+            { time: "09:00", tasks: ["敬拜練習：Gain Structure", "敬拜練習：Stage Mix", "敬拜練習：House Mix", "敬拜練習：Live Mix"] },
+            { time: "10:00", tasks: ["Set 講員 Mic, Pointer", "提講員握 Mic 手勢", "預備無線咪 / 掛耳咪"] },
+            { time: "10:13", tasks: ["預備直播：Mute Mic (避免雜音)"] },
+            { time: "10:15", tasks: ["服侍祈禱"] },
+            { time: "10:25", tasks: ["影音 Standby"] },
+            { time: "10:30", tasks: ["主崇開始"] },
+            { time: "11:00", tasks: ["證道：開始錄音"] },
+            { time: "12:00", tasks: ["主崇結束：收 Mixer", "所有音響器材收好"] }
+        ],
+        video: [
+            { time: "07:45", tasks: ["影音集合", "插電腦"] },
+            { time: "07:55", tasks: ["預備好 Aux1 畫面"] },
+            { time: "09:00", tasks: ["敬拜練習：YouTube 練習, 加 'Practice' 字眼"] },
+            { time: "10:13", tasks: ["預備直播：轉 Aux, 直播畫面"] },
+            { time: "10:14", tasks: ["直播開始：更新網站, YouTube"] },
+            { time: "10:15", tasks: ["服侍祈禱"] },
+            { time: "10:25", tasks: ["影音 Standby"] },
+            { time: "10:30", tasks: ["主崇開始"] },
+            { time: "12:00", tasks: ["主崇結束：收電腦"] }
+        ],
+        camera: [
+            { time: "07:45", tasks: ["影音集合", "插相機"] },
+            { time: "09:00", tasks: ["敬拜練習：Set Camera", "敬拜練習：對鏡頭質素"] },
+            { time: "10:15", tasks: ["服侍祈禱"] },
+            { time: "10:25", tasks: ["影音 Standby"] },
+            { time: "10:30", tasks: ["主崇開始"] },
+            { time: "12:00", tasks: ["主崇結束：收相機", "所有相機收好"] }
+        ],
+        lighting: [
+            { time: "07:45", tasks: ["影音集合", "插燈"] },
+            { time: "10:15", tasks: ["服侍祈禱"] },
+            { time: "10:25", tasks: ["影音 Standby"] },
+            { time: "10:30", tasks: ["主崇開始"] },
+            { time: "12:00", tasks: ["主崇結束：收燈", "所有燈光收好"] }
+        ],
+        leader: [
+            { time: "07:45", tasks: ["確認全員集合"] },
+            { time: "10:15", tasks: ["帶領服侍祈禱"] },
+            { time: "12:00", tasks: ["Final Check：所有電腦收好", "Final Check：所有音響收好", "Final Check：所有相機收好", "Final Check：所有燈光收好", "確認冷氣已熄 (如無下場)"] }
+        ]
+    };
+
+    // State
+    let selectedRoles = new Set(['ppt']); // Default role
+    const CHECKLIST_STORAGE_KEY = 'church_av_checklist_state';
+    const ROLES_STORAGE_KEY = 'church_av_roles_state';
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadState();
+        updateRoleButtons();
+        renderChecklist();
+    });
+
+    function loadState() {
+        // Load Selected Roles
+        const storedRoles = localStorage.getItem(ROLES_STORAGE_KEY);
+        if (storedRoles) {
+            try {
+                selectedRoles = new Set(JSON.parse(storedRoles));
+            } catch(e) { console.error('Error loading roles', e); }
+        }
+    }
+
+    function toggleRole(role) {
+        if (selectedRoles.has(role)) {
+            selectedRoles.delete(role);
+        } else {
+            selectedRoles.add(role);
+        }
+        
+        // Save Roles State
+        localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify([...selectedRoles]));
+        
+        updateRoleButtons();
+        renderChecklist();
+    }
+
+    function updateRoleButtons() {
+        document.querySelectorAll('.role-btn').forEach(btn => {
+            const role = btn.getAttribute('data-role');
+            if (selectedRoles.has(role)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function renderChecklist() {
+        const container = document.getElementById('checklistContainer');
+        container.innerHTML = '';
+
+        if (selectedRoles.size === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="empty-state-icon">👆</span>
+                    <p>請在上方點選至少一個崗位</p>
+                </div>`;
+            updateProgress();
+            return;
+        }
+
+        // 1. Gather all tasks from selected roles
+        const timelineMap = new Map(); // Key: Time String, Value: Array of Tasks
+
+        selectedRoles.forEach(role => {
+            if (!rolesData[role]) return;
+            rolesData[role].forEach((block, blockIndex) => {
+                const time = block.time;
+                if (!timelineMap.has(time)) {
+                    timelineMap.set(time, []);
+                }
+                
+                block.tasks.forEach((taskText, taskIndex) => {
+                    // Create a unique ID that represents this specific task instance
+                    const uniqueId = `${role}_${blockIndex}_${taskIndex}`;
+                    timelineMap.get(time).push({
+                        text: taskText,
+                        role: role,
+                        id: uniqueId
+                    });
+                });
+            });
+        });
+
+        // 2. Sort Times
+        const sortedTimes = Array.from(timelineMap.keys()).sort();
+
+        // 3. Render Blocks
+        sortedTimes.forEach(time => {
+            const rawTasks = timelineMap.get(time);
+            
+            // Deduplication & Merging Logic
+            // We group tasks by their TEXT. 
+            // If text is same, we merge them into one visual item but keep track of all their IDs.
+            const mergedTasksMap = new Map(); // Key: Task Text, Value: { roles: [], ids: [] }
+
+            rawTasks.forEach(item => {
+                if (!mergedTasksMap.has(item.text)) {
+                    mergedTasksMap.set(item.text, { roles: [], ids: [] });
+                }
+                const entry = mergedTasksMap.get(item.text);
+                entry.roles.push(item.role);
+                entry.ids.push(item.id);
+            });
+
+            // Create HTML for tasks in this time block
+            let tasksHtml = '';
+            mergedTasksMap.forEach((data, taskText) => {
+                // Determine if checked (if ANY of the sub-tasks are checked, we consider it checked? 
+                // Or ALL? Ideally consistent. Let's say if ALL ids are checked -> Checked visually.
+                // But for simplicity, we treat them as a group. Clicking toggles ALL.)
+                const isAllChecked = data.ids.every(id => isTaskChecked(id));
+                
+                // Badge Logic
+                let badgesHtml = '';
+                // Only show badges if multiple roles selected AND this task isn't for EVERYONE selected
+                // Exception: "Common" tasks like "影音集合" usually match text exactly, so roles.length will equal selectedRoles.size
+                if (selectedRoles.size > 1 && data.roles.length < selectedRoles.size) {
+                     // Show specific roles
+                     const roleNames = data.roles.map(r => r.toUpperCase());
+                     // Dedupe role names just in case
+                     const uniqueNames = [...new Set(roleNames)];
+                     
+                     // Optimization: If listing too many roles, maybe truncate? For now, list all.
+                     uniqueNames.forEach(name => {
+                         // Simple color mapping or just generic
+                         badgesHtml += `<span class="role-tag">${name}</span>`;
+                     });
+                } else if (selectedRoles.size > 1 && data.roles.length === selectedRoles.size) {
+                    // It's a common task for everyone selected
+                    // badgesHtml = '<span class="role-tag" style="background:#e0e7ff;color:#3730a3">ALL</span>';
+                    // Actually cleaner without "ALL" badge, implied commonality.
+                }
+
+                // We store all IDs in a data attribute to toggle them all at once
+                const idsString = JSON.stringify(data.ids);
+                const visualId = data.ids[0]; // Just for label 'for' attribute
+
+                tasksHtml += `
+                    <label class="checklist-item">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="${visualId}" 
+                                   ${isAllChecked ? 'checked' : ''} 
+                                   data-ids='${idsString}'
+                                   onchange="toggleMergedTask(this)">
+                            <span class="custom-checkbox"></span>
+                        </div>
+                        <span class="task-content">
+                            <span class="role-tags">${badgesHtml}</span>
+                            ${taskText}
+                        </span>
+                    </label>
+                `;
+            });
+
+            const timeBlock = document.createElement('div');
+            timeBlock.className = 'time-block';
+            timeBlock.innerHTML = `
+                <div class="time-header">
+                    <span>${time}</span>
+                    <span class="time-badge">${mergedTasksMap.size} 項</span>
+                </div>
+                <div class="tasks-list">
+                    ${tasksHtml}
+                </div>
+            `;
+            container.appendChild(timeBlock);
+        });
+        
+        updateProgress();
+    }
+
+    // State Management for Checks
+    function getStoredChecklistState() {
+        const state = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+        return state ? JSON.parse(state) : {};
+    }
+
+    function isTaskChecked(id) {
+        const state = getStoredChecklistState();
+        return state[id] === true;
+    }
+
+    function toggleMergedTask(checkboxElement) {
+        const ids = JSON.parse(checkboxElement.getAttribute('data-ids'));
+        const state = getStoredChecklistState();
+        const isChecked = checkboxElement.checked;
+
+        ids.forEach(id => {
+            if (isChecked) {
+                state[id] = true;
+            } else {
+                delete state[id];
+            }
+        });
+        
+        localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(state));
+        updateProgress();
+    }
+
+    function resetChecklist() {
+        if(confirm('確定要重置所有勾選狀態嗎？\n(這將會清除所有崗位的完成進度)')) {
+            localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+            renderChecklist();
+        }
+    }
+
+    function updateProgress() {
+        // Calculate progress based on VISIBLE tasks in the merged view
+        // This gives better user feedback than counting hidden tasks
+        const checkboxes = document.querySelectorAll('#checklistContainer input[type="checkbox"]');
+        const total = checkboxes.length;
+        let checked = 0;
+        
+        checkboxes.forEach(box => {
+            if (box.checked) checked++;
+        });
+
+        const percentage = total === 0 ? 0 : Math.round((checked / total) * 100);
+        
+        document.getElementById('progressBar').style.width = `${percentage}%`;
+        document.getElementById('progressText').innerText = `目前清單完成度: ${percentage}% (${checked}/${total})`;
+    }
+
+</script>
+
+</body>
+</html>
