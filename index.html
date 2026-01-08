@@ -752,7 +752,8 @@
                 if (isChecked) {
                     checklistStateCache[id] = true;
                 } else {
-                    delete checklistStateCache[id];
+                    // Set to false instead of deleting - Firebase merge won't remove deleted keys
+                    checklistStateCache[id] = false;
                 }
             });
 
