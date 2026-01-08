@@ -477,6 +477,7 @@
         let selectedRoles = new Set(['ppt']); // Default role
         let checklistStateCache = {}; // Cache for checkbox states
         let isSaving = false; // Flag to prevent listener from overwriting during save
+        let lastSaveTimestamp = ''; // Track our last save timestamp
         const CHECKLIST_STORAGE_KEY = 'church_av_checklist_state';
         const ROLES_STORAGE_KEY = 'church_av_roles_state';
         const FIREBASE_DOC_ID = 'sunday_checklist'; // Firestore document ID
@@ -501,14 +502,16 @@
 
             // Real-time listener for changes from other devices
             window.firebaseOnSnapshot(docRef, (docSnap) => {
-                // Skip if we're currently saving (to prevent overwriting our own changes)
-                if (isSaving) {
-                    console.log('Skipping sync during save operation');
-                    return;
-                }
-
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    const incomingTimestamp = data.lastUpdated || '';
+
+                    // Skip if this is our own update echoing back (same timestamp)
+                    if (isSaving && incomingTimestamp === lastSaveTimestamp) {
+                        console.log('Skipping own echo');
+                        return;
+                    }
+
                     checklistStateCache = data.tasks || {};
                     // Also update localStorage as backup
                     localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklistStateCache));
@@ -550,20 +553,24 @@
             // Set flag to prevent listener from overwriting our changes
             isSaving = true;
 
+            // Generate timestamp for this save
+            const timestamp = new Date().toISOString();
+            lastSaveTimestamp = timestamp;
+
             try {
                 const docRef = window.firebaseDoc(window.firebaseDB, 'checklist', FIREBASE_DOC_ID);
                 await window.firebaseSetDoc(docRef, {
                     tasks: state,
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: timestamp
                 }, { merge: true });
                 console.log('Saved to Firebase');
             } catch (error) {
                 console.error('Error saving to Firebase:', error);
             } finally {
-                // Reset flag after a short delay to allow the listener to process our own update
+                // Reset flag after a very short delay (just enough for our echo to come back)
                 setTimeout(() => {
                     isSaving = false;
-                }, 1000);
+                }, 200);
             }
         }
 
