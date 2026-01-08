@@ -476,6 +476,7 @@
         // State
         let selectedRoles = new Set(['ppt']); // Default role
         let checklistStateCache = {}; // Cache for checkbox states
+        let isSaving = false; // Flag to prevent listener from overwriting during save
         const CHECKLIST_STORAGE_KEY = 'church_av_checklist_state';
         const ROLES_STORAGE_KEY = 'church_av_roles_state';
         const FIREBASE_DOC_ID = 'sunday_checklist'; // Firestore document ID
@@ -500,6 +501,12 @@
 
             // Real-time listener for changes from other devices
             window.firebaseOnSnapshot(docRef, (docSnap) => {
+                // Skip if we're currently saving (to prevent overwriting our own changes)
+                if (isSaving) {
+                    console.log('Skipping sync during save operation');
+                    return;
+                }
+
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     checklistStateCache = data.tasks || {};
@@ -540,6 +547,9 @@
                 return;
             }
 
+            // Set flag to prevent listener from overwriting our changes
+            isSaving = true;
+
             try {
                 const docRef = window.firebaseDoc(window.firebaseDB, 'checklist', FIREBASE_DOC_ID);
                 await window.firebaseSetDoc(docRef, {
@@ -549,6 +559,11 @@
                 console.log('Saved to Firebase');
             } catch (error) {
                 console.error('Error saving to Firebase:', error);
+            } finally {
+                // Reset flag after a short delay to allow the listener to process our own update
+                setTimeout(() => {
+                    isSaving = false;
+                }, 1000);
             }
         }
 
@@ -715,6 +730,16 @@
         function toggleMergedTask(checkboxElement) {
             const ids = JSON.parse(checkboxElement.getAttribute('data-ids'));
             const isChecked = checkboxElement.checked;
+
+            // If unchecking, ask for confirmation
+            if (!isChecked) {
+                const confirmed = confirm('確定要取消勾選此項目嗎？');
+                if (!confirmed) {
+                    // Revert the checkbox state
+                    checkboxElement.checked = true;
+                    return;
+                }
+            }
 
             ids.forEach(id => {
                 if (isChecked) {
