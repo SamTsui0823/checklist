@@ -332,6 +332,37 @@
             display: block;
         }
     </style>
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBBpI1K7LA1zvN8qQOLzKpal0Q2Y3IKDGE",
+            authDomain: "checklist-7dfa7.firebaseapp.com",
+            projectId: "checklist-7dfa7",
+            storageBucket: "checklist-7dfa7.firebasestorage.app",
+            messagingSenderId: "961219093530",
+            appId: "1:961219093530:web:a1a78aa5f8028c2497dda3"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make Firebase functions available globally
+        window.firebaseDB = db;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseOnSnapshot = onSnapshot;
+        window.firebaseReady = true;
+
+        // Trigger initialization after Firebase is ready
+        window.dispatchEvent(new Event('firebaseReady'));
+    </script>
 </head>
 
 <body>
@@ -444,8 +475,10 @@
 
         // State
         let selectedRoles = new Set(['ppt']); // Default role
+        let checklistStateCache = {}; // Cache for checkbox states
         const CHECKLIST_STORAGE_KEY = 'church_av_checklist_state';
         const ROLES_STORAGE_KEY = 'church_av_roles_state';
+        const FIREBASE_DOC_ID = 'sunday_checklist'; // Firestore document ID
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -454,13 +487,68 @@
             renderChecklist();
         });
 
+        // Wait for Firebase to be ready, then set up real-time listener
+        window.addEventListener('firebaseReady', () => {
+            console.log('Firebase ready, setting up real-time sync...');
+            setupFirebaseListener();
+        });
+
+        function setupFirebaseListener() {
+            if (!window.firebaseDB) return;
+
+            const docRef = window.firebaseDoc(window.firebaseDB, 'checklist', FIREBASE_DOC_ID);
+
+            // Real-time listener for changes from other devices
+            window.firebaseOnSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    checklistStateCache = data.tasks || {};
+                    // Also update localStorage as backup
+                    localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklistStateCache));
+                    console.log('Synced from Firebase:', checklistStateCache);
+                    renderChecklist();
+                } else {
+                    console.log('No existing Firebase data, using local state');
+                }
+            }, (error) => {
+                console.error('Firebase listener error:', error);
+            });
+        }
+
         function loadState() {
-            // Load Selected Roles
+            // Load Selected Roles from localStorage (roles stay local per device)
             const storedRoles = localStorage.getItem(ROLES_STORAGE_KEY);
             if (storedRoles) {
                 try {
                     selectedRoles = new Set(JSON.parse(storedRoles));
                 } catch (e) { console.error('Error loading roles', e); }
+            }
+
+            // Load checklist state from localStorage (will be overwritten by Firebase when ready)
+            const storedState = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+            if (storedState) {
+                try {
+                    checklistStateCache = JSON.parse(storedState);
+                } catch (e) { console.error('Error loading checklist state', e); }
+            }
+        }
+
+        // Save state to Firebase
+        async function saveToFirebase(state) {
+            if (!window.firebaseDB) {
+                console.warn('Firebase not ready, saving to localStorage only');
+                return;
+            }
+
+            try {
+                const docRef = window.firebaseDoc(window.firebaseDB, 'checklist', FIREBASE_DOC_ID);
+                await window.firebaseSetDoc(docRef, {
+                    tasks: state,
+                    lastUpdated: new Date().toISOString()
+                }, { merge: true });
+                console.log('Saved to Firebase');
+            } catch (error) {
+                console.error('Error saving to Firebase:', error);
             }
         }
 
@@ -616,35 +704,46 @@
 
         // State Management for Checks
         function getStoredChecklistState() {
-            const state = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-            return state ? JSON.parse(state) : {};
+            // Return the cached state (already loaded from localStorage or synced from Firebase)
+            return checklistStateCache;
         }
 
         function isTaskChecked(id) {
-            const state = getStoredChecklistState();
-            return state[id] === true;
+            return checklistStateCache[id] === true;
         }
 
         function toggleMergedTask(checkboxElement) {
             const ids = JSON.parse(checkboxElement.getAttribute('data-ids'));
-            const state = getStoredChecklistState();
             const isChecked = checkboxElement.checked;
 
             ids.forEach(id => {
                 if (isChecked) {
-                    state[id] = true;
+                    checklistStateCache[id] = true;
                 } else {
-                    delete state[id];
+                    delete checklistStateCache[id];
                 }
             });
 
-            localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(state));
+            // Save to localStorage (immediate backup)
+            localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklistStateCache));
+
+            // Save to Firebase (async)
+            saveToFirebase(checklistStateCache);
+
             updateProgress();
         }
 
         function resetChecklist() {
             if (confirm('確定要重置所有勾選狀態嗎？\n(這將會清除所有崗位的完成進度)')) {
+                // Clear cache
+                checklistStateCache = {};
+
+                // Clear localStorage
                 localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+
+                // Clear Firebase
+                saveToFirebase({});
+
                 renderChecklist();
             }
         }
